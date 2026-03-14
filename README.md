@@ -63,10 +63,6 @@ tadam completions fish > ~/.config/fish/completions/tadam.fish
 
 ## Default Sound
 
-The default embedded sound is `assets/gentle_breeze_and_birds_singing.ogg`.
+The default embedded sound is `assets/knocking.wav`.
 
-Source and licensing:
-
-- Wikimedia Commons: <https://commons.wikimedia.org/wiki/File:Gentle_breeze_and_birds_singing.ogg>
-- Original source listed there: <http://www.pdsounds.org/audio/download/129/wind_and_birds_singing.mp3>
-- License: public domain (as stated on the Wikimedia file page)
+This file is generated for this project as a synthetic knocking sound.
