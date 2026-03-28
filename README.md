@@ -33,7 +33,7 @@ This installs `tadam` into Cargo's bin directory (usually `~/.cargo/bin`).
 ## Usage
 
 ```bash
-tadam [--sound <FILE>] [--quiet]
+tadam [--sound <FILE>] [--quiet] [--repeat <N>] [N]
 ```
 
 Generate shell completions:
@@ -44,6 +44,7 @@ tadam completions <bash|zsh|fish>
 
 - `--sound <FILE>`: play a custom audio file instead of the embedded default
 - `--quiet`: consume piped input without writing it back to stdout
+- `--repeat <N>` or positional `N`: play the sound `N` times (must be at least 1, default is 1)
 
 Install completions:
 

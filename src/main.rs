@@ -23,6 +23,23 @@ struct Cli {
 
     #[arg(long, help = "Do not forward stdin to stdout")]
     quiet: bool,
+
+    #[arg(
+        long,
+        value_name = "N",
+        value_parser = clap::value_parser!(u32).range(1..),
+        conflicts_with = "repeat_positional",
+        help = "Number of times to play the sound"
+    )]
+    repeat: Option<u32>,
+
+    #[arg(
+        value_name = "N",
+        value_parser = clap::value_parser!(u32).range(1..),
+        conflicts_with = "repeat",
+        help = "Number of times to play the sound"
+    )]
+    repeat_positional: Option<u32>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -58,7 +75,8 @@ fn run() -> Result<()> {
         consume_stdin().context("failed to read piped input")?;
     }
 
-    play_sound(cli.sound.as_deref()).context("failed to play sound")?;
+    let repeat = cli.repeat.or(cli.repeat_positional).unwrap_or(1);
+    play_sound(cli.sound.as_deref(), repeat).context("failed to play sound")?;
     Ok(())
 }
 
@@ -81,31 +99,43 @@ fn consume_stdin() -> io::Result<()> {
     Ok(())
 }
 
-fn play_sound(sound_path: Option<&std::path::Path>) -> Result<()> {
+fn play_sound(sound_path: Option<&std::path::Path>, repeat: u32) -> Result<()> {
     let mut stream =
         OutputStreamBuilder::open_default_stream().context("no audio output device")?;
     stream.log_on_drop(false);
     let sink = Sink::connect_new(stream.mixer());
 
-    let total_duration = match sound_path {
+    let single_duration = match sound_path {
         Some(path) => {
-            let file = File::open(path)
-                .with_context(|| format!("could not open sound file `{}`", path.display()))?;
-            let source = Decoder::new(BufReader::new(file)).context("unsupported sound format")?;
-            let total_duration = source.total_duration();
-            sink.append(source);
-            total_duration
+            let mut duration = None;
+            for _ in 0..repeat {
+                let file = File::open(path)
+                    .with_context(|| format!("could not open sound file `{}`", path.display()))?;
+                let source =
+                    Decoder::new(BufReader::new(file)).context("unsupported sound format")?;
+                if duration.is_none() {
+                    duration = source.total_duration();
+                }
+                sink.append(source);
+            }
+            duration
         }
         None => {
-            let cursor = Cursor::new(DEFAULT_SOUND);
-            let source =
-                Decoder::new(BufReader::new(cursor)).context("embedded sound file is invalid")?;
-            let total_duration = source.total_duration();
-            sink.append(source);
-            total_duration
+            let mut duration = None;
+            for _ in 0..repeat {
+                let cursor = Cursor::new(DEFAULT_SOUND);
+                let source = Decoder::new(BufReader::new(cursor))
+                    .context("embedded sound file is invalid")?;
+                if duration.is_none() {
+                    duration = source.total_duration();
+                }
+                sink.append(source);
+            }
+            duration
         }
     };
 
+    let total_duration = single_duration.and_then(|duration| duration.checked_mul(repeat));
     apply_volume_envelope(&sink, total_duration);
     drop(stream);
     Ok(())
